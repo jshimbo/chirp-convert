@@ -17,7 +17,7 @@ How to use the tool.
 
 2. Install the openpyxl Python package. https://openpyxl.readthedocs.io/en/stable/
 
-3. Run the program: ``python chirp-convert.py SARES-FreqList.csv``
+3. Run the program: ``python chirp_convert/main.py SARES-FreqList.csv``
 
 4. Open ``output.csv`` in Excel and tweak as needed.
 
