@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 # Convert SARES Frequency List from Excel to
 # Chirp-compatible CSV file.
 #
@@ -9,12 +11,23 @@ from openpyxl import load_workbook
 import re
 import csv
 
-# Many radios support 6-8 chars for names
+# Case insensitive regular expression for "hz"
+re_hertz = re.compile(re.escape('hz'), re.IGNORECASE)
+# Assume frequencies always have a decimal point, e.g., 145.0
+re_decimal_num = re.compile(r'\d+\.\d*')
+
+# https://stackoverflow.com/questions/19859282/
+def hasNumber(inputString):
+    return any(char.isdigit() for char in inputString)
+
+
 def process_name(name):
     if not name:
         return ''
 
+    # Shorten name to fit
     answer = name.replace('Cnty ', '').replace('County ', '').upper().strip()
+    # UV-R5 allow only six chars
     if len(answer) > 6:
         answer = answer.replace('-','')
     return answer
@@ -32,9 +45,10 @@ def process_tone(tone):
     rToneFreq = 88.5
     cToneFreq = 88.5
 
-    if tone:
-        # .replace is case sensitive
-        tmp_tone = float(tone.replace('Hz', ''))
+    if hasNumber(tone):
+        # Remove "Hz"
+        # string.replace is case sensitive
+        tmp_tone = float(re_hertz.sub('', tone))
         if tmp_tone > 0:
             has_tone = 'Tone'
             rToneFreq = tmp_tone
@@ -42,25 +56,32 @@ def process_tone(tone):
     return (has_tone, rToneFreq, cToneFreq)
 
 def process_frequency(freq):
-    mhz    = re.findall(r'\d+\.\d*', freq)
-    offset = re.findall(r'\D', freq)
+    found_freq = 0
     duplex = ''
-
-    if '+' in offset:
-        duplex = '+'
-    if '-' in offset:
-        duplex = '-'
-
     offset_freq = 0.0
-    found_freq = float(mhz[0])
-    if duplex:
 
-        if found_freq > 400:
-            offset_freq = 5.0
-        elif found_freq > 200:
-            offset_freq = 1.6
-        elif found_freq > 100:
-            offset_freq = 0.6
+    # Assumes frequency always has a decimal
+    # Will output zero MHz if decimal missing
+    mhz = re.match(re_decimal_num, freq)
+
+    if mhz:
+        found_freq = float(mhz.group(0))
+
+        # Look for + or - offset
+        offset = re.findall(r'\D', freq)
+        if '+' in offset:
+            duplex = '+'
+        elif '-' in offset:
+            duplex = '-'
+
+        if duplex:
+            # Offset frequency in MHz
+            if found_freq > 400:
+                offset_freq = 5.0
+            elif found_freq > 200:
+                offset_freq = 1.6
+            elif found_freq > 100:
+                offset_freq = 0.6
 
     return (found_freq, duplex, offset_freq)
 
