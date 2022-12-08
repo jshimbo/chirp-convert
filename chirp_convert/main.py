@@ -49,9 +49,9 @@ def process_tone(tone):
     cToneFreq = 88.5
 
     if tone:
-        s = re.match(re_decimal_num, tone)
+        s = re_decimal_num.search(tone)
         if s:
-            freq = float(s.group(0))
+            freq = float(s.group())
             if freq > 0:
                 # Tone is always positive
                 has_tone = 'Tone'
@@ -66,9 +66,9 @@ def process_frequency(freq):
     offset_freq = 0.0
 
     # Decimal is optional in re_decimal_num
-    mhz = re.match(re_decimal_num, freq)
+    mhz = re_decimal_num.search(freq)
     if mhz:
-        found_freq = float(mhz.group(0))
+        found_freq = float(mhz.group())
 
         # Look for + or - offset
         offset = re.findall(r'\D', freq)
