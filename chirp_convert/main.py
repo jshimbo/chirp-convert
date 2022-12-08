@@ -1,36 +1,38 @@
 #!/usr/bin/python3
 
-# Convert SARES Frequency List from Excel to
-# Chirp-compatible CSV file.
+# Convert SARES Frequency List from Excel to CSV for Chirp
 #
-# By Jeff AK6TG
-# Version 0.1
-# May 2021
+# Jeff AK6TG
+# Version 0.2
+# Dec 2022
 
 from openpyxl import load_workbook
 import re
 import csv
 
-# Case insensitive regular expression for "hz"
-re_hertz = re.compile(re.escape('hz'), re.IGNORECASE)
-# Assume frequencies always have a decimal point, e.g., 145.0
-re_decimal_num = re.compile(r'\d+\.\d*')
-
-# https://stackoverflow.com/questions/19859282/
-def hasNumber(inputString):
-    return any(char.isdigit() for char in inputString)
+# The deicmal point is optional
+re_decimal_num = re.compile(r'\d+\.?\d*')
 
 
 def process_name(name):
+    """Assume max six chars, e.g., UV-5R, and upper case."""
     if not name:
+        # Packet channel does not have a name
         return ''
 
-    # Shorten name to fit
+    # Shorten name and convert to upper case
     answer = name.replace('Cnty ', '').replace('County ', '').upper().strip()
-    # UV-R5 allow only six chars
+
+    # Existing four char names are <city code> and subchannel
+    if len(answer) == 4:
+        # insert a space
+        answer = answer[:3] + ' ' + answer[-1:]
+
+    # Strip hyphens to shorten to six chars
     if len(answer) > 6:
-        answer = answer.replace('-','')
+        answer = answer.replace('-', '')
     return answer
+
 
 def process_comment(comment):
     if comment == None:
@@ -39,31 +41,32 @@ def process_comment(comment):
         answer = str(comment).strip()
     return answer
 
+
 def process_tone(tone):
     # Chrip defaults, if no tone
     has_tone = ''
     rToneFreq = 88.5
     cToneFreq = 88.5
 
-    if hasNumber(tone):
-        # Remove "Hz"
-        # string.replace is case sensitive
-        tmp_tone = float(re_hertz.sub('', tone))
-        if tmp_tone > 0:
-            has_tone = 'Tone'
-            rToneFreq = tmp_tone
+    if tone:
+        s = re.match(re_decimal_num, tone)
+        if s:
+            freq = float(s.group(0))
+            if freq > 0:
+                # Tone is always positive
+                has_tone = 'Tone'
+                rToneFreq = freq
 
     return (has_tone, rToneFreq, cToneFreq)
+
 
 def process_frequency(freq):
     found_freq = 0
     duplex = ''
     offset_freq = 0.0
 
-    # Assumes frequency always has a decimal
-    # Will output zero MHz if decimal missing
+    # Decimal is optional in re_decimal_num
     mhz = re.match(re_decimal_num, freq)
-
     if mhz:
         found_freq = float(mhz.group(0))
 
@@ -85,12 +88,13 @@ def process_frequency(freq):
 
     return (found_freq, duplex, offset_freq)
 
+
 def process_row(row):
     # print(row)
     freq_data = process_frequency(str(row[1]))
     tone_data = process_tone(row[2])
     name = process_name(row[3])
-    comment = process_comment(row[4]) # do not convert to string
+    comment = process_comment(row[4])  # it is already a string
     one_row = {
         "Location": row[0],
         "Name": name,
@@ -113,6 +117,7 @@ def process_row(row):
     }
     return one_row
 
+
 def main():
     import sys
     import os.path
@@ -127,7 +132,7 @@ def main():
         print("{} is not a file".format(filename))
         return False
 
-    wb = load_workbook(filename = sys.argv[1], data_only=True)
+    wb = load_workbook(filename=sys.argv[1], data_only=True)
     ws = wb.active
 
     last_row = 0
@@ -150,6 +155,7 @@ def main():
     c.writerows(chirp_data)
     f.close()
     print("Created {}".format(output_file))
+
 
 if __name__ == "__main__":
     main()
