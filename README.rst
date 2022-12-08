@@ -13,11 +13,11 @@ Now, the Excel file can be the single source of truth.
 
 How to use the tool.
 
-1. Install Python 3.x. In Windows, install Python 3.8 from the Microsoft Store.
+1. Install Python 3.x. In Windows, you can install Python from the Microsoft Store.
 
 2. Install the openpyxl Python package. https://openpyxl.readthedocs.io/en/stable/
 
-3. Run the program: ``python chirp_convert/main.py SARES-FreqList.csv``
+3. Run the program: ``python3 chirp_convert/main.py SARES-FreqList.xlsx``
 
 4. Open ``output.csv`` in Excel and tweak as needed.
 
@@ -25,6 +25,6 @@ How to use the tool.
 
 6. Delete channel 0 and QA the file.
 
-7. File -> Save As to the final Chirp file.
+7. File -> Save As to your final Chirp file.
 
 Done.
