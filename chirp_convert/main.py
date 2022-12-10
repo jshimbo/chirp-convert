@@ -6,31 +6,63 @@
 # Version 0.2
 # Dec 2022
 
-from openpyxl import load_workbook
-import re
+import argparse
 import csv
+import re
+import sys
+from os import path
+from openpyxl import load_workbook
+
 
 # The deicmal point is optional
 re_decimal_num = re.compile(r'\d+\.?\d*')
 
 
-def process_name(name):
-    """Assume max six chars, e.g., UV-5R, and upper case."""
+def process_name(name, name_format):
     if not name:
         # Packet channel does not have a name
         return ''
 
+    # defaults
+    light_touch = False
+    maxlen = 7
+    # light_touch allows lowercase and 8 char names
+    if name_format == 'loose':
+        light_touch = True
+        maxlen = 8  # e.g., Kenwood TH-F6
+    elif name_format == 'strict':
+        maxlen = 6  # e.g., FT-60r
+
     # Shorten name and convert to upper case
-    answer = name.replace('Cnty ', '').replace('County ', '').upper().strip()
+    answer = name.replace('Cnty ', '').replace('County ', '').strip()
 
-    # Existing four char names are <city code> and subchannel
-    if len(answer) == 4:
-        # insert a space
-        answer = answer[:3] + ' ' + answer[-1:]
+    if not light_touch:
+        # If name ends with a lowercase letter, insert a space
+        # and (later) convert to uppercase
+        if answer[-1:].islower():
+            answer = answer[:-1] + ' ' + answer[-1:]
 
-    # Strip hyphens to shorten to six chars
-    if len(answer) > 6:
+        # Four char names are <city code> and lowercase subchannel
+        if len(answer) == 4:
+            # insert a space
+            answer = answer[:3] + ' ' + answer[-1:]
+
+        # Convert all names to all CAPS by default
+        # Do this last
+        answer = answer.upper()  # uppercase
+
+    # Strip hyphens to shorten name is too long
+    if len(answer) > maxlen:
         answer = answer.replace('-', '')
+
+    # If still too long, remove spaces
+    if len(answer) > maxlen:
+        answer = answer.replace(' ', '')
+
+    # If still too long, print warning
+    if len(answer) > maxlen:
+        print("Warning: Channel name --", answer, "-- is to too long")
+
     return answer
 
 
@@ -81,6 +113,8 @@ def process_frequency(freq):
             # Offset frequency in MHz
             if found_freq > 400:
                 offset_freq = 5.0
+                if duplex == '-':
+                    print("Warning: found negative offset for 440 MHz")
             elif found_freq > 200:
                 offset_freq = 1.6
             elif found_freq > 100:
@@ -89,11 +123,11 @@ def process_frequency(freq):
     return (found_freq, duplex, offset_freq)
 
 
-def process_row(row):
+def process_row(row, name_format):
     # print(row)
     freq_data = process_frequency(str(row[1]))
     tone_data = process_tone(row[2])
-    name = process_name(row[3])
+    name = process_name(row[3], name_format)
     comment = process_comment(row[4])  # it is already a string
     one_row = {
         "Location": row[0],
@@ -118,28 +152,32 @@ def process_row(row):
     return one_row
 
 
-def main():
-    import sys
-    import os.path
-    from os import path
+def main(args):
+    # format of channel names
+    if args.loose and args.strict:
+        print("Error: Cannot specify -l and -s. Exiting.")
+        sys.exit(1)
 
-    if len(sys.argv) < 2:
-        print("Usage: {} filename".format(sys.argv[0]))
-        return False
+    name_format = ''
+    if args.loose:
+        # allow lowercase, up to 8 chars
+        name_format = 'loose'
+    elif args.strict:
+        name_format = 'strict'
 
-    filename = sys.argv[1]
+    filename = args.filename
     if not path.isfile(filename):
-        print("{} is not a file".format(filename))
-        return False
+        print(filename, "not found")
+        sys.exit(2)
 
-    wb = load_workbook(filename=sys.argv[1], data_only=True)
+    wb = load_workbook(filename=filename, data_only=True)
     ws = wb.active
 
     last_row = 0
     chirp_data = []
     for row in ws.values:
         if type(row[0]) == int and row[0] > last_row:
-            chirp_data.append(process_row(row))
+            chirp_data.append(process_row(row, name_format))
             last_row += 1
 
     # Close the workbook after reading
@@ -158,4 +196,21 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(
+        description='Convert SARES Excel frequency list to Chirp CSV file'
+    )
+    parser.add_argument(
+        "-l", '--loose',
+        default=False,
+        action='store_true',
+        help="Allow lowercase and 8 characters in channel names"
+    )
+    parser.add_argument(
+        "-s", '--strict',
+        default=False,
+        action='store_true',
+        help="Limit channel names to six chars"
+    )
+    parser.add_argument("filename")
+    args = parser.parse_args()
+    main(args)
