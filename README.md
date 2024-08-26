@@ -2,33 +2,41 @@
 
 This Python script converts the SARES Frequency List Excel file into a Chirp-compatible CSV file.
 
-The problem I'm trying to solve is discrepancies that creep in between the Excel and CSV files when they are maintained separately and manually.
 By creating the CSV file automatically, the Excel file can be the source of truth.
 
-## How to Use This Tool
+## Prerequisites
 
-1. Install Python 3.x. In Windows, you can install Python from the Microsoft Store.
-1. Install the openpyxl Python package. https://openpyxl.readthedocs.io/en/stable/
-1. Clone this repository or download just the file `chirp_convert/main.py`.
-1. Run the program: `python3 chirp_convert/main.py SARES-FreqList.xlsx`
-   - The output file will be `output.csv`
-   - By default, the CSV file will be appropriate for BaoFeng UV-5R (seven characters, uppercase).
-   - The `-s` or `--strict` option squishes channel names to six characters, for the Yaesu FT-60
-   - The `-l` or `--loose` option allows eight characters and lowercase, for the Kenwood TH-F6.
-   - `python3 chirp_convert/main.py -h` also shows you the above info.
-1. Open `output.csv` in a spreadsheet program and edit to taste. Remember to save to a CSV file.
-1. In Chirp, open a new frequency list (File -> New) and then import `output.csv`.
-1. Edit the info as needed.
-1. File -> Save As to your final Chirp file.
+* Python 3
+* Openpyxl Python package https://openpyxl.readthedocs.io/
 
-Done.
+## Quickstart
 
-## How to Program Your Radio
+1. `git clone https://github.com/jshimbo/chirp-convert`
+2. `cd chirp-convert`
+3. `python3 -m venv .venv`
+4. `. .venv/bin/activate`
+5. `pip install openpyxl`
+6. `python3 chirp-convert\main.py --help`
+7. `python3 chirp-convert\main.py SARES-FreqList.xlsx`
 
-1. Start Chirp and connect to your radio.
-1. Read the channel data from the radio to Chirp.
-1. Import the SARES Chirp file. This overwrites only the SARES channels.
-1. Review the info.
-1. Write the channel data from Chirp to your radio.
+### Notes
+
+- The output file is always `output.csv`.
+- Steps 3 and 4 create a Python virtual environment, as required on many operating systems.
+- Channel names
+  - By default, channel names are uppercase and up to seven characters long, which the BarFeng UV-5R supports.
+  - If you have a Yaesu FT-60r, use the `-s` or `--strict` option.
+  - If you have a Kenwood TH-F6a, use the `-l` or `--loose` option, which allows lowercase and up to eight characters.
+- Open `output.csv` in a spreadsheet program and edit to taste. Remember to save to a CSV file.
+- Get the SARES Frequency list from the SARES-RG Github site, https://github.com/saresrg/Go-Kit-Forms/releases/latest.
+
+
+## Programming Your Radio
+
+1. Start the Chirp program.
+2. Connect your radio.
+3. In Chirp, `Radio > Download from radio...` [Copy memory from radio to computer.]
+4. In Chirp, `File > Import from file...` and choose your `output.csv` file. Chirp will display a scary warning but click OK to proceed. Only the SARES channel numbers will be modified.
+5. Copy chananel data from your computer to your radio, `Radio > Upload to radio...`
 
 Done.
